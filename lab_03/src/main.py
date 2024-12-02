@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QTableWidget, QTableWidgetItem,
     QVBoxLayout, QWidget, QPushButton, QLineEdit, QHBoxLayout, QMessageBox, QDialog
 )
+from collections import Counter
 from PyQt6.QtCore import Qt
 import numpy as np
 MAX_COUNT = 10000
@@ -19,11 +20,38 @@ class MyRandom:
         self.current = (self.a * self.current + self.c) % self.m
         return int(min_number + self.current % (max_number - min_number))
 
-    def get_coeff(self, numbers: list):
-        ## gini impurity
-        _, counts = np.unique(numbers, return_counts=True)
-        probabilities = counts / np.sum(counts)
-        return 1 - np.sum(probabilities**2)
+    def calculate_gini_impurity(self, probabilities):
+        """Вычисляет нечистоту Джини из распределения вероятностей."""
+        return 1 - np.sum(prob ** 2 for prob in probabilities)
+
+    def get_coeff(self, numbers: list, subseq_length: int = 1000):
+        """Вычисляет индекс случайности на основе нечистоты Джини и подпоследовательностей."""
+        
+        #min_value = np.min(numbers)
+        #max_value = np.max(numbers)
+    
+    
+        #uniform_distribution = np.linspace(min_value, max_value, len(numbers))
+
+        #mse = np.mean((numbers - uniform_distribution) ** 2 / max(numbers) ** 2)
+    
+        #return mse
+        # Генерация подпоследовательностей
+         # Calculate the differences between consecutive elements
+        differences = []
+
+        for i in range(1, len(numbers) - 1):
+            diff = abs(abs(numbers[i] - numbers[i - 1]) - abs(numbers[i + 1] - numbers[i]))
+            differences.append(diff)
+
+        # Calculate the mean of differences
+        mean_diff = np.mean(differences)
+        dev = np.std(differences)
+        if mean_diff == 0 or dev == 0:
+            return 0
+        print(mean_diff,dev,diff)
+    
+        return mean_diff / dev 
 
 class ManualInputDialog(QDialog):
     def __init__(self, parent=None):
@@ -181,7 +209,7 @@ class Window(QMainWindow):
             rows = file.readlines()
 
         for row in rows:
-            numbers.update(int(num) for num in set(row.split()[1:])) # set for randomness
+            numbers.update(int(num) for num in row.split()[1:]) # set for randomness
             if len(numbers) >= count:
                 break
 
@@ -210,8 +238,10 @@ class Window(QMainWindow):
     def tabular_solve(self):
         table_nums = self.read_table_numbers(TABLE_PATH, MAX_COUNT * 3)
         one_digit = [table_num % 10 for table_num in table_nums[:MAX_COUNT]]
-        two_digits = [(table_num % 100 + 10) for table_num in table_nums[MAX_COUNT:MAX_COUNT * 2]]
-        three_digits = [(table_num % 1000 + 100) for table_num in table_nums[MAX_COUNT * 2:MAX_COUNT * 3]]
+        two_digits = [(table_num % 100 + 10) if (table_num % 100) < 10 else (table_num % 100)
+                      for table_num in table_nums[MAX_COUNT:MAX_COUNT * 2]]
+        three_digits = [(table_num % 1000 + 100) if (table_num % 1000) < 100 else (table_num % 1000)
+                        for table_num in table_nums[MAX_COUNT * 2:MAX_COUNT * 3]]
         
         return one_digit, two_digits, three_digits
 
